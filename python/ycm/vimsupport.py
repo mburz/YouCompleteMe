@@ -26,7 +26,8 @@ from ycmd.utils import ( ByteOffsetToCodepointOffset,
                          OnMac,
                          OnWindows,
                          ToBytes,
-                         ToUnicode )
+                         ToUnicode,
+                         IsJdtUri )
 
 BUFFER_COMMAND_MAP = { 'same-buffer'      : 'edit',
                        'split'            : 'split',
@@ -197,8 +198,10 @@ def BufferIsVisible( buffer_number ):
 
 
 def GetBufferFilepath( buffer_object ):
-  if buffer_object.name:
-    return os.path.abspath( ToUnicode( buffer_object.name ) )
+  buffer_name = buffer_object.name
+  if buffer_name:
+    return ( os.path.abspath( ToUnicode( buffer_name ) )
+             if not IsJdtUri( buffer_name ) else buffer_name )
   # Buffers that have just been created by a command like :enew don't have any
   # buffer name so we use the buffer number for that.
   return os.path.join( GetCurrentDirectory(), str( buffer_object.number ) )
@@ -1317,3 +1320,25 @@ def DisplayWidth():
 
 def DisplayWidthOfString( s ):
   return GetIntValue( f"strdisplaywidth( '{ EscapeForVim( s ) }' )" )
+
+def JavaClassFileContentsToBuffer( contents ):
+  vim.current.buffer.options[ 'modifiable' ] = True
+  vim.current.buffer.options[ 'readonly' ]   = False
+
+  vim.current.buffer[ : ] = contents.splitlines()
+
+  # don't set buftype to nofile/nowrite otherwise jumping from qf windows
+  # (e.g. YCM GoToReferences) does not reuse the window, it always opens
+  # it in a split
+
+  # bufhidden=wipe creates problems when jumping to the same item from a
+  # quickfix window
+  vim.current.buffer.options[ 'bufhidden' ]  = 'delete'
+  vim.current.buffer.options[ 'buflisted' ]  = False
+  vim.current.buffer.options[ 'swapfile' ]   = False
+  vim.current.buffer.options[ 'modifiable' ] = False
+  vim.current.buffer.options[ 'readonly' ]   = True
+
+  # We need to prevent closing the window causing a warning about unsaved
+  # file, so we pretend to Vim that the buffer has not been changed.
+  vim.current.buffer.options[ 'modified' ]   = False

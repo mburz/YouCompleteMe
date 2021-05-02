@@ -91,6 +91,9 @@ class CommandRequest( BaseRequest ):
     if 'detailed_info' in self._response:
       return self._HandleDetailedInfoResponse()
 
+    if self._command == 'JavaClassFileContents':
+      return self._HandleJavaClassFileContentsResponse()
+
     # The only other type of response we understand is GoTo, and that is the
     # only one that we can't detect just by inspecting the response (it should
     # either be a single location or a list)
@@ -193,6 +196,10 @@ class CommandRequest( BaseRequest ):
 
   def _HandleDetailedInfoResponse( self ):
     vimsupport.WriteToPreviewWindow( self._response[ 'detailed_info' ] )
+
+
+  def _HandleJavaClassFileContentsResponse( self ):
+    vimsupport.JavaClassFileContentsToBuffer( self._response[ 'result' ] )
 
 
 def SendCommandRequestAsync( arguments, extra_data = None, silent = True ):
